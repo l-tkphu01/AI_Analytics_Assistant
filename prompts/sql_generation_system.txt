@@ -1,0 +1,2 @@
+# NỘI DUNG CẦN LÀM:
+# System prompt cho SQL Generator (Groq Llama)

@@ -1,0 +1,2 @@
+# NỘI DUNG CẦN LÀM:
+# Prompt cho narrative generation (sinh báo cáo từ JSON)

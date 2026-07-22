@@ -1,0 +1,2 @@
+# NỘI DUNG CẦN LÀM:
+# System prompt cho NLU (Gemini Flash) - định dạng JSON output

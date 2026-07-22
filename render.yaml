@@ -1,0 +1,4 @@
+# NỘI DUNG CẦN LÀM:
+# - Service type: web, env: docker, plan: free
+# - Env vars: GEMINI_API_KEY, GROQ_API_KEY, FABRIC_SQL_ENDPOINT, FABRIC_CLIENT_ID, FABRIC_CLIENT_SECRET, SUPABASE_URL, SUPABASE_KEY, DATA_SOURCE
+# - Disk mount: /app/data (1GB)

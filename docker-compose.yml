@@ -1,0 +1,6 @@
+# NỘI DUNG CẦN LÀM:
+# - Service "app": build từ Dockerfile
+# - Mount volume ./data → /app/data (persist data khi restart)
+# - Env file: .env
+# - Ports: 8000:8000, 8501:8501
+# - Dùng cho LOCAL DEV (không dùng cho Render)
