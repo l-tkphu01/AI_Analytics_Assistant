@@ -98,6 +98,59 @@ class SQLiteConnector(DataConnector):
     def get_dialect(self) -> str:
         return "SQLite"
 
+    # ═══════════════════════════════════════════════════════════
+    # 🔧 BƯỚC 0.5: Implement cho SQLite (Giai đoạn 3)
+    # ═══════════════════════════════════════════════════════════
+
+    def get_foreign_keys(self) -> list:
+        """
+        Quét Foreign Key từ metadata SQLite bằng PRAGMA foreign_key_list.
+        Trả về danh sách dict chuẩn hóa để Schema Engine dùng.
+        """
+        if not self._connection:
+            self.connect()
+
+        cursor = self._connection.cursor()
+
+        # Lấy danh sách tất cả các bảng
+        cursor.execute("SELECT name FROM sqlite_master WHERE type='table' AND name NOT LIKE 'sqlite_%'")
+        tables = [row[0] for row in cursor.fetchall()]
+
+        foreign_keys = []
+        for table_name in tables:
+            cursor.execute(f"PRAGMA foreign_key_list('{table_name}')")
+            for fk in cursor.fetchall():
+                # PRAGMA foreign_key_list trả về:
+                # (id, seq, to_table, from_column, to_column, on_update, on_delete, match)
+                foreign_keys.append({
+                    "from_table": table_name,
+                    "from_column": fk[3],   # Cột ở bảng hiện tại
+                    "to_table": fk[2],      # Bảng đích
+                    "to_column": fk[4],     # Cột ở bảng đích
+                })
+
+        logger.info(f"Đã quét FK: {len(foreign_keys)} quan hệ từ {len(tables)} bảng")
+        return foreign_keys
+
+    def get_sample_values(self, table: str, column: str, limit: int = 50) -> list:
+        """
+        Lấy giá trị mẫu DISTINCT của 1 cột trong SQLite.
+        Dùng cho Kỹ thuật RAG #5 (Targeted Data Profiling).
+        """
+        if not self._connection:
+            self.connect()
+
+        try:
+            cursor = self._connection.cursor()
+            # Dùng DISTINCT để lấy giá trị không trùng, LIMIT để giới hạn
+            cursor.execute(f"SELECT DISTINCT \"{column}\" FROM \"{table}\" WHERE \"{column}\" IS NOT NULL LIMIT ?", (limit,))
+            values = [row[0] for row in cursor.fetchall()]
+            logger.info(f"Data Profiling [{table}.{column}]: {len(values)} giá trị distinct")
+            return values
+        except Exception as e:
+            logger.warning(f"Không thể lấy mẫu [{table}.{column}]: {e}")
+            return []
+
     def close(self):
         """Đóng kết nối."""
         if self._connection:

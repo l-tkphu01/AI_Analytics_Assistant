@@ -1,0 +1,69 @@
+trash_column_keywords:
+- password
+- token
+- hash
+- secret
+- created_at
+- updated_at
+- created_by
+- updated_by
+- createdat
+- updatedat
+- createdby
+- updatedby
+- modified_date
+- modifieddate
+- last_login
+- lastlogin
+- is_active
+- is_deleted
+- isactive
+- isdeleted
+- is_archived
+- isarchived
+- session_id
+- sessionid
+- ip_address
+- user_agent
+profiling:
+  text_profiling_limit: 50
+  numeric_profiling_limit: 20
+column_descriptions:
+  customerkey: khóa khách hàng, mã khách hàng
+  customerid: mã định danh khách hàng, id khách hàng
+  customername: tên khách hàng, tên công ty, customer name, company name
+  customertier: hạng khách hàng, cấp độ khách hàng, customer tier, membership level
+  creditlimit: giới hạn tín dụng, hạn mức tín dụng, credit limit, loan limit
+  accountmanager: người quản lý tài khoản, account manager, tài khoản quản lý
+  region: vùng miền, khu vực, region, area
+  city: thành phố, city, thị trấn
+  productkey: khóa sản phẩm, mã sản phẩm
+  productid: mã định danh sản phẩm, id sản phẩm
+  productname: tên sản phẩm, product name, tên hàng hóa
+  brand: thương hiệu, brand, nhãn hiệu
+  category: danh mục, category, loại hàng
+  subcategory: danh mục con, subcategory, loại hàng con
+  standardcost: chi phí tiêu chuẩn, standard cost, giá thành
+  listprice: giá bán, list price, giá niêm yết
+  storekey: khóa cửa hàng, mã cửa hàng
+  storeid: mã định danh cửa hàng, id cửa hàng
+  storename: tên cửa hàng, store name, tên shop
+  storetype: loại cửa hàng, store type, loại shop
+  managername: tên người quản lý, manager name, tên trưởng cửa hàng
+  datekey: khóa ngày, mã ngày
+  fulldate: ngày đầy đủ, ngày tháng năm
+  year: năm, year, fiscal year
+  quarter: quý, quarter, kỳ
+  month: tháng, month, kỳ tháng
+  weekofyear: tuần trong năm, week of year, tuần
+  dayofweek: ngày trong tuần, day of week, ngày
+  isweekend: là cuối tuần, is weekend, ngày nghỉ
+  inventoryid: mã tồn kho, id tồn kho
+  stockonhand: tồn kho, stock on hand, hàng tồn
+  reorderpoint: điểm đặt hàng lại, reorder point, mức tồn kho tối thiểu
+  saleid: mã bán hàng, id bán hàng
+  orderquantity: số lượng đặt hàng, order quantity, số lượng mua
+  unitprice: giá đơn vị, unit price, giá bán lẻ
+  discountamount: số tiền giảm giá, discount amount, khuyến mãi
+  salesamount: doanh thu, sales amount, tổng tiền bán
+  taxamount: thuế, tax amount, tiền thuế

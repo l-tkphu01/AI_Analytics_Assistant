@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     SUPABASE_KEY: str = ""
     
     # Security
-    JWT_SECRET_KEY: str = "default_secret_key"
+    JWT_SECRET_KEY: str = "default_secret_key" # Nhớ đổi lại cái mã phức tạp hơn trong .env khi test trên enterprise nhé
     JWT_ALGORITHM: str = "HS256"
     
     # App Config (Đã vá: Thêm biến môi trường và Công tắc gỡ lỗi)

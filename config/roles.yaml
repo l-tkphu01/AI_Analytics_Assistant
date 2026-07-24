@@ -1,0 +1,32 @@
+# ============================================================
+# 📋 BẢNG PHÂN QUYỀN TRUNG TÂM (ABAC - Attribute-Based Access Control)
+# Sửa file này để thay đổi quyền hạn mà KHÔNG CẦN SỬA CODE PYTHON!
+# ============================================================
+
+admin:
+  # Giám đốc: Xem mọi thứ, không bị giới hạn vùng miền
+  RLS_Region: null
+  RBAC_Allowed_Tables:
+    - "*"
+
+manager_north:
+  # Quản lý Miền Bắc: Chỉ xem dữ liệu Miền Bắc
+  RLS_Region: "Miền Bắc"
+  RBAC_Allowed_Tables:
+    - "Sales"
+    - "Customers"
+    - "Products"
+
+manager_south:
+  # Quản lý Miền Nam: Chỉ xem dữ liệu Miền Nam
+  RLS_Region: "Miền Nam"
+  RBAC_Allowed_Tables:
+    - "Sales"
+    - "Customers"
+    - "Products"
+
+viewer:
+  # Khách vãng lai: Chỉ xem danh mục sản phẩm, không xem doanh thu
+  RLS_Region: null
+  RBAC_Allowed_Tables:
+    - "Products"

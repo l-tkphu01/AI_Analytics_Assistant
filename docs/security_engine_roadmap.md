@@ -34,9 +34,11 @@ Dưới đây là thiết kế chi tiết và lộ trình triển khai cho 6 t�
 - **Tiến độ:** ✅ Đã phác thảo logic thành công.
 
 ### 4. `cls.py` (Kiểm soát cấp độ Cột - Column-Level Security)
-- **Mục tiêu:** Che giấu dữ liệu nhạy cảm (PII - Xóa số điện thoại, mật khẩu).
-- **Cách thức hoạt động:** Nếu SQL trả về DataFrame có chứa các cột nằm trong Blacklist (ví dụ `CCCD`, `Phone`, `Salary`), hàm này sẽ tự động Replace data thành `***` trước khi chuyển cho con AI nhận xét.
-- **Tiến độ:** ⏳ Sẽ thực hiện trong Giai đoạn 4.
+- **Mục tiêu:** Che giấu dữ liệu nhạy cảm (PII) như Số điện thoại, Thẻ tín dụng, Mật khẩu.
+- **Cách thức hoạt động:** Sử dụng 2 kỹ thuật Enterprise:
+  - *Kỹ thuật 1 (Dynamic Data Masking):* Nếu SQL trả về dữ liệu có chứa cột nhạy cảm, hệ thống sẽ tự động ụp mặt nạ (thay bằng `***`) nếu User không có quyền `UNMASK` trong Thẻ Token.
+  - *Kỹ thuật 2 (Symmetric Encryption & RBAC Key):* Dữ liệu nhạy cảm bị mã hóa đối xứng (thành chuỗi rác) lúc lưu vào ổ cứng DB. Trên giao diện UI có nút "Bấm để xem". Khi bấm, Backend kiểm tra quyền của Thẻ Token, nếu có quyền sẽ dùng Chìa khóa giải mã ra số thật, nếu không sẽ báo lỗi.
+- **Tiến độ:** ⏳ Ý tưởng xuất sắc, sẽ làm ở Giai đoạn 4 (Đóng vai trò Tầm nhìn Kiến trúc cho Đồ án).
 
 ---
 

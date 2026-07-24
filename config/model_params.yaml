@@ -1,0 +1,52 @@
+# ============================================================
+# 🤖 CẤU HÌNH THAM SỐ CÁC MÔ HÌNH AI (AI MODEL PARAMS)
+# Sếp muốn đổi sang Claude hay GPT-4o? Chỉ cần sửa file này!
+# ============================================================
+ 
+# 1. NLU Engine + Guardrails Tầng 2
+nlu_model:
+  provider: "openrouter"
+  model_name: "google/gemini-2.5-flash-lite"
+  temperature: 0.1
+  max_tokens: 500
+  request_timeout: 10
+
+# 2. Text-to-SQL Engine
+sql_model:
+  provider: "groq"
+  model_name: "llama-3.3-70b-versatile"
+  temperature: 0.0
+  max_tokens: 1500
+  request_timeout: 15
+
+# 3. Self-Correction Engine 
+correction_model:
+  provider: "groq"
+  model_name: "llama-3.3-70b-versatile"
+  temperature: 0.1
+  max_tokens: 1000
+  request_timeout: 15
+
+# 4. Analysis Engine (Viết báo cáo phân tích)
+analysis_model:
+  provider: "openrouter"
+  model_name: "google/gemini-2.5-flash-lite"
+  temperature: 0.3       # Nhiệt độ cao hơn → Văn phong mượt mà tự nhiên
+  max_tokens: 2000
+  request_timeout: 15
+
+# 5. Embedding Model (Nhúng Schema vào ChromaDB)
+embedding_model:
+  provider: "cohere"
+  model_name: "embed-multilingual-v3.0"
+
+# 6. Fallback Embedding (Dự phòng khi Cohere sập, chạy offline)
+fallback_embedding_model:
+  provider: "huggingface"
+  model_name: "all-MiniLM-L6-v2"
+
+# 7. Reranker (Lọc tinh Top 3 kết quả từ ChromaDB)
+reranker_model:
+  provider: "cohere"
+  model_name: "rerank-multilingual-v3.0"
+  top_n: 3

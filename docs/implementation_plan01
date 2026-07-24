@@ -1,0 +1,42 @@
+# KẾ HOẠCH NÂNG CẤP BƯỚC 2: LLM AUTO-DOCUMENTER & HYBRID SEARCH
+
+Theo yêu cầu cực kỳ chuẩn xác của sếp về tầm nhìn Enterprise, chúng ta sẽ tạm gác hệ thống thủ công lại và chuyển sang xây dựng một kiến trúc **hoàn toàn tự động** cho bất kỳ Database nào cắm vào hệ thống!
+
+---
+
+## 🤖 1. LLM AUTO-DOCUMENTER (Tự động hóa 100% việc dán nhãn Schema)
+
+Thay vì Admin phải ngồi gõ từng dòng mô tả trong `schema_config.yaml` cho Database Bệnh viện hay Logistics, chúng ta sẽ dùng LLM làm việc này.
+
+### 📝 Kiến trúc luồng chạy:
+1. **Quét cấu trúc thô:** Đọc toàn bộ tên Bảng, tên Cột từ Database mới.
+2. **LLM Prompting:** Chia nhỏ từng bảng và gửi cho Gemini/Llama 3 kèm theo Prompt: 
+   > *"Mày là một Chuyên gia Dữ liệu (Data Steward). Hãy nhìn vào danh sách cột này, dự đoán ý nghĩa nghiệp vụ của nó bằng tiếng Việt. Bắt buộc trả về đúng định dạng JSON: `{"column_name": "ý nghĩa tiếng việt"}`."*
+3. **Cập nhật Config (Tự động):** Đọc file `config/schema_config.yaml`, đập kết quả JSON mà LLM vừa sinh ra vào block `column_descriptions` và lưu file lại.
+4. **Tái nhúng Vector:** `SchemaIndexer` chạy `index_schema()` để đọc file YAML mới và nhúng vào ChromaDB.
+
+### 🛠️ Triển khai cụ thể:
+- Tạo script mới: `scripts/auto_document_schema.py`.
+- Sử dụng `LLMProvider` (đã có sẵn) để lấy mô hình Gemini.
+- Chế tác Prompt siêu chuẩn xác ép LLM trả về đúng định dạng JSON để không bị lỗi Parse.
+
+---
+
+## 🔍 2. HYBRID SEARCH (Tích hợp BM25 + Vector)
+
+(Phần này đã thảo luận lúc nãy, sẽ code song song để đẩy hệ thống lên mức độ hoàn hảo).
+- Bổ sung `core/bm25_retriever.py`.
+- Nâng cấp `search_relevant_tables()` trong `indexer.py` để chạy song song BM25 và ChromaDB.
+- Trộn kết quả bằng **RRF** và ném cho **Cohere Rerank**.
+
+---
+
+## User Review Required
+> [!IMPORTANT]
+> Sếp xem kỹ phần **LLM Auto-Documenter** nhé. Chi phí gọi LLM để dán nhãn toàn bộ Database có thể dao động từ vài ngàn đến vài chục ngàn token tùy độ lớn của DB (Chạy 1 lần duy nhất lúc Setup Database mới).
+> Sếp có đồng ý thiết kế này để tôi bắt đầu tạo Script tự động hóa không?
+
+## Verification Plan
+1. **Xóa sạch YAML hiện tại:** Tôi sẽ xóa đoạn `column_descriptions` trong `schema_config.yaml` mà tôi vừa sửa bằng tay lúc nãy.
+2. **Chạy Tool:** Gọi `python scripts/auto_document_schema.py`.
+3. **Kiểm tra File:** Mở lại `schema_config.yaml` để tận mắt chứng kiến LLM tự động viết mô tả tiếng Việt điền đầy đủ vào file.

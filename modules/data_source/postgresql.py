@@ -1,5 +1,7 @@
 import pandas as pd
 import time
+import warnings
+warnings.filterwarnings("ignore", category=UserWarning, module="pandas")
 from typing import List, Dict, Any
 from modules.data_source.base import DataConnector
 from config.settings import settings
@@ -102,6 +104,55 @@ class PostgreSQLConnector(DataConnector):
 
     def get_dialect(self) -> str:
         return "PostgreSQL"
+
+    def get_foreign_keys(self) -> list:
+        """
+        Quét Foreign Key từ information_schema trong PostgreSQL.
+        """
+        if not self._connection:
+            self.connect()
+
+        fk_sql = """
+            SELECT
+                kcu.table_name AS from_table,
+                kcu.column_name AS from_column,
+                ccu.table_name AS to_table,
+                ccu.column_name AS to_column
+            FROM information_schema.table_constraints AS tc
+            JOIN information_schema.key_column_usage AS kcu
+              ON tc.constraint_name = kcu.constraint_name
+             AND tc.table_schema = kcu.table_schema
+            JOIN information_schema.constraint_column_usage AS ccu
+              ON ccu.constraint_name = tc.constraint_name
+             AND ccu.table_schema = tc.table_schema
+            WHERE tc.constraint_type = 'FOREIGN KEY'
+              AND tc.table_schema = 'public';
+        """
+        try:
+            df = pd.read_sql_query(fk_sql, self._connection)
+            foreign_keys = df.to_dict(orient="records")
+            logger.info(f"PostgreSQL FK: {len(foreign_keys)} quan hệ")
+            return foreign_keys
+        except Exception as e:
+            logger.warning(f"Lỗi quét FK PostgreSQL: {e}")
+            return []
+
+    def get_sample_values(self, table: str, column: str, limit: int = 50) -> list:
+        """
+        Lấy giá trị mẫu DISTINCT trong PostgreSQL.
+        """
+        if not self._connection:
+            self.connect()
+
+        try:
+            sql = f'SELECT DISTINCT "{column}" FROM "{table}" WHERE "{column}" IS NOT NULL LIMIT {limit}'
+            df = pd.read_sql_query(sql, self._connection)
+            values = df[column].dropna().tolist()
+            logger.info(f"PostgreSQL Data Profiling [{table}.{column}]: {len(values)} giá trị")
+            return values
+        except Exception as e:
+            logger.warning(f"Không thể lấy mẫu PostgreSQL [{table}.{column}]: {e}")
+            return []
 
     def close(self):
         if self._connection:

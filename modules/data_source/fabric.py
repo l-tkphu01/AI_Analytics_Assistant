@@ -116,6 +116,31 @@ class FabricConnector(DataConnector):
     def get_dialect(self) -> str:
         return "T-SQL"
 
+    def get_foreign_keys(self) -> list:
+        """
+        Fabric Data Warehouse không lưu Foreign Key vật lý.
+        Trả về [] (rỗng) → Schema Engine sẽ dùng Naming Convention & file JSON.
+        """
+        logger.info("Fabric không có FK vật lý. Trả về [] để dùng Naming Convention.")
+        return []
+
+    def get_sample_values(self, table: str, column: str, limit: int = 50) -> list:
+        """
+        Lấy giá trị mẫu DISTINCT trong Fabric (T-SQL dùng TOP).
+        """
+        if not self._connection:
+            self.connect()
+
+        try:
+            sql = f"SELECT DISTINCT TOP {limit} [{column}] FROM [{table}] WHERE [{column}] IS NOT NULL"
+            df = pd.read_sql_query(sql, self._connection)
+            values = df[column].dropna().tolist()
+            logger.info(f"Fabric Data Profiling [{table}.{column}]: {len(values)} giá trị")
+            return values
+        except Exception as e:
+            logger.warning(f"Không thể lấy mẫu Fabric [{table}.{column}]: {e}")
+            return []
+
     def close(self):
         if self._connection:
             self._connection.close()

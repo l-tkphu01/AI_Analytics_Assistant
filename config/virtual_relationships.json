@@ -1,0 +1,12 @@
+{
+    "_comment": "File DỰ PHÒNG: Chỉ được đọc khi Auto-Detect (FK / Naming Convention) không tìm thấy quan hệ nào.",
+    
+    "relationships": [],
+
+    "exclude_groups": [
+        ["Fact_Sales", "Fact_Inventory"],
+        ["Sales", "Orders", "Inventory"]
+    ],
+
+    "_exclude_groups_comment": "Danh sách các nhóm bảng CẤM GHÉP trực tiếp bằng Naming Convention. Mỗi mảng con chứa các bảng cùng nhóm. Ví dụ: 2 bảng Fact không được JOIN trực tiếp."
+}
