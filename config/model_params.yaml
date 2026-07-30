@@ -17,12 +17,12 @@ sql_model:
   model_name: "llama-3.3-70b-versatile"
   temperature: 0.0
   max_tokens: 1500
-  request_timeout: 15
+  request_timeout: 15 
 
 # 3. Self-Correction Engine 
 correction_model:
-  provider: "groq"
-  model_name: "llama-3.3-70b-versatile"
+  provider: "openrouter"
+  model_name: "openai/gpt-4o-mini"
   temperature: 0.1
   max_tokens: 1000
   request_timeout: 15

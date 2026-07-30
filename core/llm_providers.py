@@ -71,6 +71,39 @@ class LLMProvider:
         )
          
     @staticmethod
+    def get_correction_llm():
+        """
+        Model siêu cấp (Claude/GPT-4o) dùng để sửa lỗi SQL hoặc phân tích dữ liệu phức tạp.
+        Đọc từ config 'correction_model'.
+        """
+        cfg = _PARAMS.get("correction_model", {})
+        
+        # Nếu dùng OpenRouter (như Claude 3.5 Sonnet)
+        if cfg.get("provider") == "openrouter":
+            if not settings.OPENROUTER_API_KEY:
+                raise ValueError("Thiếu OPENROUTER_API_KEY trong file .env")
+            return ChatOpenAI(
+                base_url="https://openrouter.ai/api/v1",
+                api_key=settings.OPENROUTER_API_KEY,
+                model=cfg.get("model_name", "openai/gpt-4o-mini"),
+                temperature=cfg.get("temperature", 0.1),
+                max_tokens=cfg.get("max_tokens", 1000),
+                request_timeout=cfg.get("request_timeout", 15),
+            )
+        # Fallback về Groq (Llama) nếu không dùng OpenRouter
+        else:
+            if not settings.GROQ_API_KEY:
+                raise ValueError("Thiếu GROQ_API_KEY trong file .env")
+            return ChatGroq(
+                model_name=cfg.get("model_name", "llama-3.3-70b-versatile"),
+                groq_api_key=settings.GROQ_API_KEY,
+                temperature=cfg.get("temperature", 0.1),
+                max_tokens=cfg.get("max_tokens", 1000),
+                request_timeout=cfg.get("request_timeout", 15),
+            )
+
+         
+    @staticmethod
     def get_analysis_llm():
         """
         Model cho việc sinh Báo cáo phân tích chuyên gia (Narrative).

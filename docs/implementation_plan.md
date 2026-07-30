@@ -99,12 +99,76 @@ Implement 2 method mới cho SQLite:
 ---
 
 ### 🔧 BƯỚC 3: NLU Engine — Hiểu câu hỏi Tiếng Việt
-#### [NEW] `config/synonyms.json`
-- Từ điển ánh xạ từ lóng/viết tắt → Tên cột/bảng chuẩn. Ví dụ: `"doanh số"` → `"Revenue"`, `"chốt đơn"` → `"Completed_Orders"`, `"bom hàng"` → `"Cancelled"`.
+
+#### ⚠️ QUYẾT ĐỊNH THIẾT KẾ QUAN TRỌNG:
+- **BỎ** file `config/synonyms.json` (Không cần từ điển thủ công).
+  - Lý do 1: `schema_config.yaml` đã chứa từ đồng nghĩa Việt-Anh (do LLM Auto-Documenter sinh).
+  - Lý do 2: Gemini Flash đủ thông minh để hiểu tiếng lóng trực tiếp trong lúc phân tích intent.
+- **BỎ** hàm `preprocess_question()` (Không cần bước tiền xử lý riêng).
+
+#### 🔍 3 ĐIỂM CHÊ ĐÃ ĐƯỢC VÁ TRONG THIẾT KẾ:
+1. **NLU có thừa không?** → Giữ lại vì NLU giúp Vector Search chính xác hơn + Dễ Debug (nhìn JSON là biết AI hiểu đúng/sai).
+2. **NLU không biết DB có gì → Bịa tên cột!** → Vá bằng cách nhồi danh sách tên Bảng + Cột vào Prompt, ép Gemini chỉ được chọn từ danh sách có sẵn.
+3. **Tốn thêm 1 lần gọi API (chậm + tốn tiền)** → Vá bằng cách chạy NLU **song song** với Vector Search thay vì nối tiếp.
+
+#### 🔄 KIẾN TRÚC CHẠY (Đã tối ưu):
+```
+Câu hỏi User ("Còn Samsung thì sao?")
+     │
+     ▼
+[1. Guardrails] ← Lưới Lọc Kép (Tầng 1: Rule-based + Tầng 2: AI Semantic)
+     │              Nếu rác/độc hại → DỪNG LUỒNG, trả lỗi cho User
+     ▼
+[2. Rewriting]  ← Đọc lịch sử chat, viết lại câu hỏi cho đầy đủ
+     │              "Còn Samsung thì sao?" → "Doanh thu Samsung bao nhiêu?"
+     ▼
+Câu hỏi an toàn + đầy đủ
+     │
+     ├──────────────────┐
+     ▼                  ▼
+[3. Vector Search] [4. NLU Engine]      ← Chạy SONG SONG (tiết kiệm thời gian)
+   (Tìm bảng)     (Bóc intent+filter)
+     │                  │
+     └────────┬─────────┘
+              ▼
+      [5. SQL Generator]
+    (Nhận cả Schema + NLU JSON → Sinh SQL chuẩn)
+```
 
 #### [NEW] `modules/nlu/engine.py`
-- Hàm `preprocess_question(question)`: **Kỹ thuật RAG #7 (Semantic Synonyms)** — Đọc `synonyms.json`, dịch từ lóng trong câu hỏi TRƯỚC KHI gửi đi Vector Search.
-- Hàm `analyze_intent(question)`: Gọi Gemini Flash (qua `LLMProvider.get_nlu_llm()`) trích xuất JSON gồm: Intent (AGGREGATION, COMPARISON, RANKING...) + Entities (metric, dimension, time_range).
+- Hàm `rewrite_question(question, chat_history)`:
+  - Input: Câu hỏi hiện tại + Lịch sử chat gần nhất (tối đa 3 lượt).
+  - Xử lý 2 trường hợp:
+    - **Follow-up**: "Còn Samsung?" → "Doanh thu Samsung bao nhiêu?" (dựa vào ngữ cảnh chat trước).
+    - **Viết tắt/Lóng**: "DT Q3 bn?" → "Doanh thu quý 3 bao nhiêu?"
+  - Nếu câu hỏi đã rõ ràng → Giữ nguyên, không sửa bậy.
+  - Fallback: Nếu Gemini lỗi → Trả lại câu gốc nguyên vẹn.
+
+- Hàm `analyze_intent(question, schema_columns)`:
+  - Input: Câu hỏi tiếng Việt + Danh sách tên bảng/cột từ DB (để Gemini không bịa).
+  - Gọi **Gemini Flash Lite** (qua `LLMProvider.get_nlu_llm()`, siêu rẻ ~0.5s).
+  - Output: JSON chuẩn gồm:
+    ```json
+    {
+        "intent": "RANKING | AGGREGATION | COMPARISON | TREND | DETAIL | GENERAL",
+        "metric": "SalesAmount",
+        "dimension": "ProductName",
+        "filter": {"Brand": "Apple"},
+        "time_range": {"quarter": 3},
+        "limit": 5,
+        "sort": "DESC"
+    }
+    ```
+  - Xử lý Fallback: Nếu Gemini trả JSON lỗi → Trả về intent mặc định `GENERAL` để pipeline không bị chết.
+
+#### ⚙️ QUYẾT ĐỊNH KỸ THUẬT: Prompt tách ra file YAML
+- Tất cả prompt của NLU (`nlu_intent_prompt`, `nlu_rewrite_prompt`) đều nằm trong `config/prompts.yaml`.
+- Không hardcode prompt trong code Python. Muốn sửa cách AI phân tích → Chỉ cần sửa file YAML.
+
+#### [NEW] `tests/test_nlu.py`
+- Test với 5 câu hỏi tiếng Việt đa dạng (AGGREGATION, RANKING, COMPARISON, TREND, DETAIL).
+- Test Rewriting với câu follow-up + viết tắt.
+- Test Fallback khi không có schema.
 
 ---
 

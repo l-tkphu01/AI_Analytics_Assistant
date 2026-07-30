@@ -4,29 +4,33 @@
 # ============================================================
 
 admin:
-  # Giám đốc: Xem mọi thứ, không bị giới hạn vùng miền
+  # Giám đốc: Xem mọi thứ, không bị giới hạn vùng miền, xem được dữ liệu nhạy cảm
   RLS_Region: null
   RBAC_Allowed_Tables:
     - "*"
+  CLS_Bypass: true
 
 manager_north:
-  # Quản lý Miền Bắc: Chỉ xem dữ liệu Miền Bắc
+  # Quản lý Miền Bắc: Chỉ xem dữ liệu Miền Bắc, bị che thông tin nhạy cảm
   RLS_Region: "Miền Bắc"
   RBAC_Allowed_Tables:
     - "Sales"
     - "Customers"
     - "Products"
+  CLS_Bypass: false
 
 manager_south:
-  # Quản lý Miền Nam: Chỉ xem dữ liệu Miền Nam
+  # Quản lý Miền Nam: Chỉ xem dữ liệu Miền Nam, bị che thông tin nhạy cảm
   RLS_Region: "Miền Nam"
   RBAC_Allowed_Tables:
     - "Sales"
     - "Customers"
     - "Products"
+  CLS_Bypass: false
 
 viewer:
-  # Khách vãng lai: Chỉ xem danh mục sản phẩm, không xem doanh thu
+  # Khách vãng lai: Chỉ xem danh mục sản phẩm, không xem doanh thu, bị che dữ liệu nhạy cảm
   RLS_Region: null
   RBAC_Allowed_Tables:
     - "Products"
+  CLS_Bypass: false

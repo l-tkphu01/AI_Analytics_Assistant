@@ -1,3 +1,29 @@
 {
-  "_note": "NỘI DUNG CẦN LÀM:\nĐịnh nghĩa columns cần exclude/mask (Salary, SSN, Email, Phone)"
+  "exclude": [],
+  "mask": [
+    {
+      "table": "Dim_Customers",
+      "column": "CustomerID",
+      "reason": "Chứa thông tin nhận diện cá nhân của khách hàng.",
+      "mask_type": "partial" 
+    },
+    { 
+      "table": "Dim_Customers",
+      "column": "CustomerName",
+      "reason": "Chứa thông tin nhận diện cá nhân của khách hàng.",
+      "mask_type": "partial"
+    },
+    {
+      "table": "Dim_Customers",
+      "column": "CreditLimit",
+      "reason": "Chứa thông tin tài chính nhạy cảm.",
+      "mask_type": "full"
+    },
+    {
+      "table": "Dim_Stores",
+      "column": "ManagerName",
+      "reason": "Chứa thông tin cá nhân của người quản lý cửa hàng.",
+      "mask_type": "partial"
+    }
+  ]
 }

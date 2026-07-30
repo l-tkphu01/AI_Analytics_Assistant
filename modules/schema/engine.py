@@ -199,12 +199,13 @@ class SchemaEngine:
     def format_schema_for_prompt(self, schema: List[Dict[str, Any]], relationships: List[Dict[str, str]]) -> str:
         """
         Gom (Schema + Quan hệ + Data Profiling) thành 1 chuỗi Text Markdown tối ưu.
+        Đã thêm BẮT BUỘC dấu ngoặc kép (" ") cho bảng và cột để LLM dễ bắt chước cho PostgreSQL.
         """
         prompt = "## CẤU TRÚC DATABASE (Kèm Data Profiling):\n\n"
         for table in schema:
-            prompt += f"### Bảng `{table['table_name']}`\n"
+            prompt += f"### Bảng `\"{table['table_name']}\"`\n"
             for col in table["columns"]:
-                col_str = f"- {col['name']} ({col['type']})"
+                col_str = f"- \"{col['name']}\" ({col['type']})"
                 if "sample_values" in col:
                     col_str += f" | Mẫu: {col['sample_values']}"
                 prompt += col_str + "\n"
@@ -215,7 +216,7 @@ class SchemaEngine:
             prompt += "Không tìm thấy quan hệ (AI tự suy luận hoặc báo lỗi).\n"
         else:
             for rel in relationships:
-                prompt += f"- `{rel['from_table']}.{rel['from_column']}` ➔ `{rel['to_table']}.{rel['to_column']}` (Nguồn: {rel['source']})\n"
+                prompt += f"- `\"{rel['from_table']}\".\"{rel['from_column']}\"` ➔ `\"{rel['to_table']}\".\"{rel['to_column']}\"` (Nguồn: {rel['source']})\n"
 
         return prompt
 

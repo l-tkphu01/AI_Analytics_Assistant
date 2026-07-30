@@ -11,6 +11,7 @@ Tầng 2: AI Semantic Intent Classification (Gemini Flash)
 """
 import yaml
 import os
+import re
 from core.logger import get_logger
 
 logger = get_logger(__name__)
@@ -29,53 +30,73 @@ def _load_guard_config() -> dict:
             return yaml.safe_load(f)
     except Exception as e:
         logger.error(f"Không thể đọc file security_guard.yaml: {e}")
-        return {"toxic_words": [], "sql_injection_keywords": [], "ai_guardrail": {"enabled": False}}
+        return {"toxic_words": [], "ai_guardrail": {"enabled": False}}
 
 
-def _is_business_safe_phrase(question: str, config: dict) -> bool:
+def _mask_business_safe_phrases(question: str, config: dict) -> str:
     """
-    [KHẮC PHỤC LỖ HỔNG #2: FALSE POSITIVES]
-    Kiểm tra xem câu hỏi có chứa cụm từ lóng kinh doanh hợp lệ hay không.
-    Ví dụ: "hàng chết", "bom hàng", "hủy đơn" → Đây là từ lóng bình thường trong kinh doanh.
+    [KHẮC PHỤC LỖ HỔNG #2: FALSE POSITIVES & RACE CONDITION]
+    Che (mask) các cụm từ kinh doanh hợp lệ trước khi quét Blacklist.
+    Tránh việc user lợi dụng Whitelist để chèn từ cấm (Vd: "muốn đánh thằng kia vì đánh giá tệ").
     """
-    question_lower = question.lower()
+    masked_question = question
     for phrase in config.get("business_safe_phrases", []):
-        if phrase in question_lower:
-            logger.info(f"✅ Guardrails: Phát hiện cụm từ kinh doanh hợp lệ '{phrase}', bỏ qua kiểm tra từ cấm.")
-            return True
-    return False
+        # Dùng regex ignore case để thay thế cụm từ an toàn bằng [SAFE_PHRASE]
+        # Regex re.escape giúp tránh lỗi nếu phrase có chứa ký tự đặc biệt
+        pattern = re.compile(re.escape(phrase), re.IGNORECASE)
+        if pattern.search(masked_question):
+            masked_question = pattern.sub(" [SAFE_PHRASE] ", masked_question)
+            logger.info(f"✅ Guardrails: Đã che cụm từ kinh doanh hợp lệ '{phrase}'.")
+            
+    return masked_question
+
+
+def _normalize_and_tokenize(text: str) -> tuple[str, set]:
+    """Làm sạch câu hỏi (xóa dấu câu) và tách thành tập hợp các từ (tokens)."""
+    # Xóa các ký tự đặc biệt, dấu câu, chỉ giữ lại chữ cái, số và khoảng trắng
+    # Lưu ý: Giữ lại cả dấu ngoặc vuông để không xóa mất chữ [SAFE_PHRASE]
+    clean_text = re.sub(r'[^\w\s\[\]]', ' ', text.lower())
+    # Chuẩn hóa khoảng trắng
+    clean_text = re.sub(r'\s+', ' ', clean_text).strip()
+    # Tách thành mảng các từ
+    tokens = set(clean_text.split())
+    return clean_text, tokens
 
 
 def validate_question_fast(question: str, config: dict) -> tuple[bool, str]:
     """
     TẦNG 1: Fast Rule-Based Filter (< 1ms, Chi phí 0đ)
     Quét từ khóa cấm nguy hiểm và SQL Injection thô bạo.
-    [KHẮC PHỤC LỖ HỔNG #2]: Kiểm tra Business Safe Phrases trước khi chặn.
     """
-    question_lower = question.lower()
+    # Bước 0: MASKING (Che) cụm từ kinh doanh hợp lệ TRƯỚC
+    # Biến câu "Tôi muốn đánh đứa đánh giá tệ" thành "Tôi muốn đánh đứa [SAFE_PHRASE] tệ"
+    masked_question = _mask_business_safe_phrases(question, config)
     
-    # Bước 0: Kiểm tra cụm từ kinh doanh hợp lệ TRƯỚC
-    is_biz_safe = _is_business_safe_phrase(question, config)
+    # Chuẩn bị dữ liệu từ câu đã được che (Tokenization/Normalization)
+    clean_text, tokens = _normalize_and_tokenize(masked_question)
     
-    # Bước 1: Quét từ ngữ độc hại
+    # Bước 1: Quét từ ngữ độc hại trên câu ĐÃ CHE
     for word in config.get("toxic_words", []):
-        if word in question_lower:
-            # Nếu câu hỏi chứa cụm từ kinh doanh hợp lệ → Bỏ qua, không chặn
-            if is_biz_safe:
-                continue
-            logger.error(f"🚨 [TẦNG 1] BÁO ĐỘNG: Ngôn từ độc hại '{word}'!")
-            return False, f"Phát hiện ngôn từ không phù hợp: '{word}'"
-            
-    # Bước 2: Quét SQL Injection thô bạo
-    for word in config.get("sql_injection_keywords", []):
-        if word.lower() in question_lower:
-            logger.error(f"🚨 [TẦNG 1] BÁO ĐỘNG: Ý đồ phá hoại CSDL '{word}'!")
-            return False, f"Phát hiện cú pháp câu lệnh bị cấm: '{word}'"
+        toxic_word = word.lower().strip()
+        matched = False
+        
+        # Nếu từ cấm là một cụm từ (có khoảng trắng) -> dùng substring match an toàn
+        if " " in toxic_word:
+            if f" {toxic_word} " in f" {clean_text} ":
+                matched = True
+        # Nếu từ cấm là từ đơn -> check trong tập tokens (O(1))
+        else:
+            if toxic_word in tokens:
+                matched = True
+                
+        if matched:
+            logger.error(f"🚨 [TẦNG 1] BÁO ĐỘNG: Phát hiện ngôn từ độc hại '{toxic_word}'!")
+            return False, "Phát hiện ngôn từ không phù hợp trong câu hỏi."
             
     return True, "SAFE"
 
 
-def validate_question_ai(question: str, config: dict) -> tuple[bool, str]:
+def validate_question_ai(question: str, config: dict, chat_history: list = None) -> tuple[bool, str]:
     """
     TẦNG 2: AI Semantic Guardrail (~100ms, Phân tích Ý đồ bằng Gemini Flash)
     Phát hiện Prompt Injection, Jailbreak, và Hỏi Lạc Đề.
@@ -119,9 +140,17 @@ def validate_question_ai(question: str, config: dict) -> tuple[bool, str]:
         system_prompt = ai_cfg.get("system_prompt", "")
         
         messages = [
-            ("system", system_prompt),
-            ("human", f"Câu hỏi từ người dùng: '{question}'")
+            ("system", system_prompt)
         ]
+        
+        # Nhúng lịch sử chat (Multi-turn Context)
+        if chat_history:
+            history_text = "LỊCH SỬ CHAT (Đọc để hiểu ngữ cảnh, phòng chống Jailbreak):\n"
+            for turn in chat_history[-3:]: # Lấy 3 lượt gần nhất
+                history_text += f"- User: {turn['user']}\n- AI: {turn['ai']}\n"
+            messages.append(("human", history_text))
+            
+        messages.append(("human", f"CÂU HỎI HIỆN TẠI TỪ USER (Cần đánh giá an toàn):\n'{question}'"))
         
         response = llm.invoke(messages)
         raw = response.content.strip()
@@ -130,7 +159,13 @@ def validate_question_ai(question: str, config: dict) -> tuple[bool, str]:
         
         # Thử parse JSON từ AI (AI trả về {"verdict": "...", "message": "..."})
         try:
-            parsed = json_lib.loads(raw)
+            # Xóa bỏ các thẻ markdown (nếu có)
+            clean_raw = raw
+            match = re.search(r'```(?:json)?\s*(.*?)\s*```', clean_raw, re.IGNORECASE | re.DOTALL)
+            if match:
+                clean_raw = match.group(1).strip()
+                
+            parsed = json_lib.loads(clean_raw)
             verdict = parsed.get("verdict", "SAFE").upper()
             ai_message = parsed.get("message", "")
         except (json_lib.JSONDecodeError, AttributeError):
@@ -160,6 +195,7 @@ def validate_question_ai(question: str, config: dict) -> tuple[bool, str]:
         # --- KHẮC PHỤC #1: Fail-Closed ---
         logger.error(f"⚠️ Lỗi khi gọi AI Guardrail Tầng 2: {e}")
         if fail_closed:
+            logger.critical("🚨 [ALERT] AI Guardrail SẬP! Triggering PagerDuty/Slack alert!")
             logger.warning("🔒 [FAIL-CLOSED] AI lỗi → CHẶN TẤT CẢ để đảm bảo an toàn tuyệt đối!")
             return False, "Hệ thống bảo mật AI đang tạm thời không khả dụng. Vui lòng thử lại sau."
         else:
@@ -167,7 +203,7 @@ def validate_question_ai(question: str, config: dict) -> tuple[bool, str]:
             return True, "SAFE"
 
 
-def validate_question_safety(question: str) -> tuple[bool, str]:
+def validate_question_safety(question: str, chat_history: list = None) -> tuple[bool, str]:
     """
     MASTER HYBRID GUARDRAIL:
     Chạy Tầng 1 (Fast Filter) → Nếu qua → Chạy Tầng 2 (AI Semantic Filter).
@@ -180,7 +216,7 @@ def validate_question_safety(question: str) -> tuple[bool, str]:
         return False, msg_t1
         
     # Tầng 2: AI Semantic (~100ms)
-    is_safe_t2, msg_t2 = validate_question_ai(question, config)
+    is_safe_t2, msg_t2 = validate_question_ai(question, config, chat_history=chat_history)
     if not is_safe_t2:
         return False, msg_t2
         

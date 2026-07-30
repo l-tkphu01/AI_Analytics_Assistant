@@ -22,9 +22,11 @@ def get_logger(name: str) -> logging.Logger:
         console_handler.setFormatter(formatter)
         logger.addHandler(console_handler)
         
-        # 2. File handler (Lưu ra file)
+        # 2. File handler (Lưu ra file, giới hạn dung lượng để không bị tràn)
         os.makedirs("logs", exist_ok=True) # Tự tạo thư mục logs nếu chưa có
-        file_handler = logging.FileHandler("logs/app.log", encoding='utf-8')
+        from logging.handlers import RotatingFileHandler
+        # Giới hạn 5MB mỗi file, giữ tối đa 3 file cũ (app.log, app.log.1, app.log.2, app.log.3)
+        file_handler = RotatingFileHandler("logs/app.log", maxBytes=5*1024*1024, backupCount=3, encoding='utf-8')
         file_handler.setFormatter(formatter)
         logger.addHandler(file_handler)
         
